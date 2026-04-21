@@ -41,6 +41,14 @@ impl<T> SpinLock<T> {
     pub fn lock(&self) -> SpinGuard<'_, T> {
         // TODO: Spin-wait to acquire lock
         // TODO: Return SpinGuard { lock: self }
+        while self
+            .locked
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
+            core::hint::spin_loop();
+        }
+
         SpinGuard { lock: self }
     }
 }

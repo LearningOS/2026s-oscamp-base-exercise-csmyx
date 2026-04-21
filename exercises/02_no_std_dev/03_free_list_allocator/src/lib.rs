@@ -38,7 +38,7 @@
 
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::null_mut;
-use std::sync::atomic::Ordering;
+use core::sync::atomic::Ordering;
 
 /// Free block header, stored at the beginning of each free memory block
 struct FreeBlock {
@@ -116,7 +116,8 @@ unsafe impl GlobalAlloc for FreeListAllocator {
         // - Check if curr address satisfies align, and (*curr).size >= size
         // - If found, remove it from the list (update prev's next or the free_list head)
         // - Return curr as *mut u8
-        let mut cur = *self.free_list.lock().unwrap();
+        let mut cur = self.free_list_head();
+
         let mut prev_ptr = cur;
         loop {
             if cur.is_null() {

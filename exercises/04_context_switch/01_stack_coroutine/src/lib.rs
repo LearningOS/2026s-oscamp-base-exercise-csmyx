@@ -14,6 +14,8 @@
 //! - First and second arguments: `a0` (old context), `a1` (new context).
 
 #![cfg(target_arch = "riscv64")]
+#![feature(naked_functions_rustic_abi)]
+use std::arch::naked_asm;
 
 /// Saved register state for one task (riscv64). Layout must match the offsets used in the asm below: for one task (riscv64). Layout must match the offsets used in the asm below:
 /// `sp` at 0, `ra` at 8, then `s0`–`s11` at 16, 24, … 104.
@@ -62,17 +64,62 @@ impl TaskContext {
     /// - Set `sp = stack_top` with 16-byte alignment (RISC-V ABI requires 16-byte aligned stack at function entry).
     /// - Leave `s0`–`s11` zero; they will be loaded on switch.
     pub fn init(&mut self, stack_top: usize, entry: usize) {
-        todo!("set ra = entry, sp = stack_top (16-byte aligned)")
+        // todo!("set ra = entry, sp = stack_top (16-byte aligned)")
+        self.ra = entry as u64;
+        self.sp = stack_top as u64;
     }
 }
 
-/// Switch from `old` to `new` context: save current callee-saved regs into `old`, load from `new`, then `ret` (jumps to `new.ra`).
+/// Switch from `old` to `new` context: save current callee-saved regs into `old`, load from `new`,
+///  then `ret` (jumps to `new.ra`).
 ///
-/// In asm: store `sp`, `ra`, `s0`–`s11` to `[a0]` (old), load from `[a1]` (new), zero `a0`/`a1` so we do not leak pointers into the new context, then `ret`.
+/// In asm: store `sp`, `ra`, `s0`–`s11` to `[a0]` (old), load from `[a1]` (new), zero `a0`/`a1`
+/// so we do not leak pointers into the new context, then `ret`.
 ///
 /// Must be `#[unsafe(naked)]` to prevent the compiler from generating a prologue/epilogue.
+#[unsafe(naked)]
 pub unsafe fn switch_context(old: &mut TaskContext, new: &TaskContext) {
-    todo!("save callee-saved regs to old, load from new, then ret; use #[unsafe(naked)] + naked_asm!, see module doc for riscv64 ABI and layout")
+    // todo!("save callee-saved regs to old, load from new, then ret; use #[unsafe(naked)] + naked_asm!, see module doc for riscv64 ABI and layout")
+    // #[unsafe(naked)] + naked_asm!
+
+    // 这里只能写 asm！不能写任何 Rust 代码
+    naked_asm!(
+        // store context to old
+        "sd  sp,  0*8(a0)", //sp
+        "sd  ra,  1*8(a0)", //ra
+        "sd  s1,  2*8(a0)", //s1
+        "sd  s2,  3*8(a0)", //s2
+        "sd  s3,  4*8(a0)", //s3
+        "sd  s4,  5*8(a0)", //s4
+        "sd  s5,  6*8(a0)", //s5
+        "sd  s6,  7*8(a0)", //s6
+        "sd  s7,  8*8(a0)", //s7
+        "sd  s8,  9*8(a0)", //s8
+        "sd  s9, 10*8(a0)", //s9
+        "sd s10, 11*8(a0)", //s10
+        "sd s11, 12*8(a0)", //s11
+        //
+        // load context from new
+        "ld  sp,  0*8(a1)", //sp
+        "ld  ra,  1*8(a1)", //ra
+        "ld  s1,  2*8(a1)", //s1
+        "ld  s2,  3*8(a1)", //s2
+        "ld  s3,  4*8(a1)", //s3
+        "ld  s4,  5*8(a1)", //s4
+        "ld  s5,  6*8(a1)", //s5
+        "ld  s6,  7*8(a1)", //s6
+        "ld  s7,  8*8(a1)", //s7
+        "ld  s8,  9*8(a1)", //s8
+        "ld  s9, 10*8(a1)", //s9
+        "ld s10, 11*8(a1)", //s10
+        "ld s11, 12*8(a1)", //s11
+        //
+        // zero a0, a1
+        "li a0, 0",
+        "li a1, 0",
+        // return to new.ra
+        "ret",
+    );
 }
 
 const STACK_SIZE: usize = 1024 * 64;
@@ -81,9 +128,16 @@ const STACK_SIZE: usize = 1024 * 64;
 /// (stack grows down). The buffer must be kept alive for the lifetime of the context using this stack.
 pub fn alloc_stack() -> (Vec<u8>, usize) {
     // todo!("allocate stack buffer, return (buffer, stack_top) with stack_top 16-byte aligned")
-    let stack = vec![0u8; STACK_SIZE];
-    // let top = st
-    (stack, 0)
+    // use std::alloc::{alloc, Layout};
+    // const ALIGN: usize = 16;
+    // let layout = Layout::from_size_align(STACK_SIZE, ALIGN).unwrap();
+    // let ptr = unsafe { alloc(layout) };
+    // let stk = unsafe { Vec::from_raw_parts(ptr, 0, STACK_SIZE) };
+    // let top = ptr as usize + STACK_SIZE;
+    // (stk, top)
+    let stk = vec![0u8; STACK_SIZE];
+    let ptr = stk.as_ptr();
+    (stk, ptr as usize + STACK_SIZE)
 }
 
 #[cfg(test)]
@@ -128,7 +182,7 @@ mod tests {
         extern "C" fn cooperative_task() {
             COUNTER.store(99, Ordering::SeqCst);
             unsafe {
-                switch_context(&mut *TASK_CTX_PTR, &*MAIN_CTX_PTR);
+                switch_context(&mut *TASK_CTX_PTR, &*MAIN_CTX_PTR); // jump back to line 200
             }
         }
 
@@ -140,7 +194,7 @@ mod tests {
         unsafe {
             MAIN_CTX_PTR = &mut main_ctx;
             TASK_CTX_PTR = &mut task_ctx;
-            switch_context(&mut main_ctx, &task_ctx);
+            switch_context(&mut main_ctx, &task_ctx); // jump to line 183
         }
 
         assert_eq!(COUNTER.load(Ordering::SeqCst), 99);
