@@ -157,7 +157,8 @@ pub fn double_in_thread(numbers: Vec<i32>) -> Vec<i32> {
     // TODO: Create a new thread to multiply each element of numbers by 2
     // Use thread::spawn and move closure
     // Use join().unwrap() to get result
-    todo!()
+    let handle = thread::spawn(move || numbers.into_iter().map(|x| x * 2).collect::<Vec<_>>());
+    handle.join().unwrap()
 }
 
 /// Sum two vectors in parallel, returning a tuple of two sums.
@@ -167,7 +168,9 @@ pub fn double_in_thread(numbers: Vec<i32>) -> Vec<i32> {
 pub fn parallel_sum(a: Vec<i32>, b: Vec<i32>) -> (i32, i32) {
     // TODO: Create two threads to sum a and b respectively
     // Join both threads to get results
-    todo!()
+    let handle1 = thread::spawn(move || a.into_iter().sum::<i32>());
+    let handle2 = thread::spawn(move || b.into_iter().sum::<i32>());
+    (handle1.join().unwrap(), handle2.join().unwrap())
 }
 
 // ============================================================================
@@ -185,7 +188,14 @@ pub fn named_sleeper(value: i32, ms: u64) -> i32 {
     // TODO: Create a thread builder with name "sleeper"
     // TODO: Spawn a thread that sleeps for `ms` milliseconds and returns `value`
     // TODO: Join the thread and return the value
-    todo!()
+    let builder = thread::Builder::new();
+    let handle = builder
+        .spawn(move || {
+            thread::sleep(Duration::from_millis(ms));
+            value
+        })
+        .unwrap();
+    handle.join().unwrap()
 }
 
 thread_local! {
@@ -200,7 +210,10 @@ thread_local! {
 /// Hint: Use `THREAD_COUNT.with(|cell| { ... })` to access the thread‑local variable.
 pub fn increment_thread_local() -> usize {
     // TODO: Use THREAD_COUNT.with to increment and return the new count
-    todo!()
+    THREAD_COUNT.with(|r| {
+        r.replace_with(|&mut f| f + 1);
+        *r.borrow()
+    })
 }
 
 /// Spawn two threads using a **scoped thread** to compute the sum of two slices without moving ownership.
@@ -216,7 +229,12 @@ pub fn scoped_slice_sum(a: &[i32], b: &[i32]) -> (i32, i32) {
     // TODO: Use thread::scope to spawn two threads
     // TODO: Each thread sums its slice
     // TODO: Wait for both threads and return the results
-    todo!()
+    //
+    thread::scope(|s| {
+        let handle1 = s.spawn(move || a.iter().sum::<i32>());
+        let handle2 = s.spawn(move || b.iter().sum::<i32>());
+        (handle1.join().unwrap(), handle2.join().unwrap())
+    })
 }
 
 /// Handle a possible panic in a spawned thread.
@@ -233,7 +251,41 @@ pub fn scoped_slice_sum(a: &[i32], b: &[i32]) -> (i32, i32) {
 pub fn handle_panic(value: i32, should_panic: bool) -> Result<i32, ()> {
     // TODO: Spawn a thread that either panics or returns value
     // TODO: Join and map the result appropriately
-    todo!()
+    let handle = thread::spawn(move || {
+        if should_panic {
+            panic!("wtf")
+        } else {
+            Ok(value)
+        }
+    });
+
+    // match handle.join() {
+    //     Ok(x) => match x {
+    //         Ok(x) => Ok(x),
+    //         Err(_) => Err(()), // the type of left is not related to the right
+    //     },
+    //     Err(_) => Err(()),
+    // }
+    // why this can't infer the inner Err type:
+    //
+    // Err(_) is not related to the ret type,
+    // so the innter type can't be inferred from the ret type
+
+    handle.join().unwrap_or(Err(()))
+    // why this can infer the inner Err type:
+    // let x = handle.join();
+    // this is what `x.unwrap_or()` do:
+    //
+    // ```rust
+    // match handle.join() {
+    //     Ok(x) => x,
+    //     Err(e) => Err(()),
+    // }
+    // ```
+    //
+    // typeof(x) == Result<Result<i32;, {known}>>
+    // typof (Ok(t)) == typeof (x), so typeof (t) == Result<i32, {known}>
+    // typeof(t) == typeof(ret type of handle_panic), so {known} == ()
 }
 
 #[cfg(test)]

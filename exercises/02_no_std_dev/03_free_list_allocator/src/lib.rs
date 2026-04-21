@@ -38,6 +38,7 @@
 
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::null_mut;
+use std::sync::atomic::Ordering;
 
 /// Free block header, stored at the beginning of each free memory block
 struct FreeBlock {
@@ -115,11 +116,40 @@ unsafe impl GlobalAlloc for FreeListAllocator {
         // - Check if curr address satisfies align, and (*curr).size >= size
         // - If found, remove it from the list (update prev's next or the free_list head)
         // - Return curr as *mut u8
+        let mut cur = *self.free_list.lock().unwrap();
+        let mut prev_ptr = cur;
+        loop {
+            if cur.is_null() {
+                break;
+            }
+            if ((cur as usize) & (align - 1) == 0) && (*cur).size >= size {
+                if cur != self.free_list_head() {
+                    (*prev_ptr).next = (*cur).next;
+                } else {
+                    self.set_free_list_head((*cur).next);
+                }
+                return cur as *mut u8;
+            }
+            prev_ptr = cur;
+            cur = (*cur).next;
+        }
 
         // TODO: Step 2 — no suitable block in free_list, allocate from bump region
         //
         // Same logic as 02_bump_allocator's alloc
-        todo!()
+        let cur = self.bump_next.load(Ordering::SeqCst);
+        let align = layout.align();
+        let aligned = (cur + align - 1) & !(align - 1);
+        let end = aligned + layout.size();
+        if end > self.heap_end {
+            null_mut()
+        } else {
+            self.bump_next
+                .compare_exchange(cur, end, Ordering::SeqCst, Ordering::SeqCst)
+                .unwrap();
+
+            aligned as *mut u8
+        }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
@@ -131,7 +161,12 @@ unsafe impl GlobalAlloc for FreeListAllocator {
         // 1. Cast ptr to *mut FreeBlock
         // 2. Write FreeBlock { size, next: current list head }
         // 3. Update free_list head to ptr
-        todo!()
+        let ptr = ptr as *mut FreeBlock;
+        *ptr = FreeBlock {
+            size,
+            next: self.free_list_head(),
+        };
+        self.set_free_list_head(ptr);
     }
 }
 

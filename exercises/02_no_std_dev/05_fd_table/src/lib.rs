@@ -51,13 +51,14 @@ pub struct FdTable {
     // TODO: Design the internal structure
     // Hint: use Vec<Option<Arc<dyn File>>>
     //       the index is the fd number, None means the fd is closed or unallocated
+    table: Vec<Option<Arc<dyn File>>>,
 }
 
 impl FdTable {
     /// Create an empty fd table
     pub fn new() -> Self {
         // TODO
-        todo!()
+        Self { table: vec![] }
     }
 
     /// Allocate a new fd, return the fd number.
@@ -65,25 +66,54 @@ impl FdTable {
     /// Prefers reusing the smallest closed fd number; if no free slot, appends to the end.
     pub fn alloc(&mut self, file: Arc<dyn File>) -> usize {
         // TODO
-        todo!()
+        let fd = self
+            .table
+            .iter()
+            .enumerate()
+            .find_map(|(i, f)| f.is_none().then_some(i))
+            .unwrap_or(self.table.len());
+        self.table.insert(fd, Some(file));
+        fd
     }
 
     /// Get the file object for an fd. Returns None if the fd doesn't exist or is closed.
     pub fn get(&self, fd: usize) -> Option<Arc<dyn File>> {
         // TODO
-        todo!()
+        // self.table.get(fd).and_then(|f| f.clone())
+        self.table.get(fd)?.clone()
     }
 
     /// Close an fd. Returns true on success, false if the fd doesn't exist or is already closed.
     pub fn close(&mut self, fd: usize) -> bool {
         // TODO
-        todo!()
+        // solution 1
+        // match self.table.get_mut(fd) {
+        //     None => false,
+        //     Some(f) if f.is_none() => false,
+        //     Some(f) if f.is_some() => {
+        //         *f = None;
+        //         true
+        //     }
+        //     Some(_) => unreachable!(),
+        // }
+        //
+        // solution 2
+        // let Some(slot) = self.table.get_mut(fd) else {
+        //     return false;
+        // };
+        // slot.take().is_some()
+        //
+        // solution 3
+        // self.table.get_mut(fd).and_then(|f| f.take()).is_some()
+        //
+        // solution 4
+        self.table.get_mut(fd).and_then(Option::take).is_some()
     }
 
     /// Return the number of currently allocated fds (excluding closed ones)
     pub fn count(&self) -> usize {
         // TODO
-        todo!()
+        self.table.iter().filter(|f| f.is_some()).count()
     }
 }
 

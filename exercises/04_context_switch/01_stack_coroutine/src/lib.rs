@@ -80,7 +80,10 @@ const STACK_SIZE: usize = 1024 * 64;
 /// Allocate a stack for a coroutine. Returns `(buffer, stack_top)` where `stack_top` is the high address
 /// (stack grows down). The buffer must be kept alive for the lifetime of the context using this stack.
 pub fn alloc_stack() -> (Vec<u8>, usize) {
-    todo!("allocate stack buffer, return (buffer, stack_top) with stack_top 16-byte aligned")
+    // todo!("allocate stack buffer, return (buffer, stack_top) with stack_top 16-byte aligned")
+    let stack = vec![0u8; STACK_SIZE];
+    // let top = st
+    (stack, 0)
 }
 
 #[cfg(test)]
