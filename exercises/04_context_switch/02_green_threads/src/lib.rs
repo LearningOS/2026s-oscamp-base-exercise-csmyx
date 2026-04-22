@@ -153,6 +153,7 @@ impl Scheduler {
         };
         cur.ctx.ra = thread_wrapper as *const () as u64;
         cur.ctx.sp = ((stk_top - 16) & !15) as u64;
+        // println!("spawn {}", self.threads.len());
         self.threads.push(cur);
         // self.current += 1;
     }
@@ -165,42 +166,68 @@ impl Scheduler {
     pub fn run(&mut self) {
         // todo!("set SCHEDULER to self, loop until threads[1..] all Finished, call schedule_next, then clear SCHEDULER")
         unsafe { SCHEDULER = self as *mut Scheduler };
-        if !self.threads[1..]
-            .iter()
-            .all(|t| t.state == ThreadState::Finished)
-        {
-            self.schedule_next();
+        loop {
+            if !self.threads[1..]
+                .iter()
+                .all(|t| t.state == ThreadState::Finished)
+            {
+                self.schedule_next();
+            } else {
+                break;
+            }
         }
+        // println!("all routines finished");
 
         unsafe { SCHEDULER = std::ptr::null_mut() };
+    }
+
+    // Find the index of next ready thread in round-robin way.
+    fn round_robin(&mut self) -> Option<usize> {
+        // solution 1
+        //
+        // let mut iter = self.threads[self.current + 1..]
+        //     .iter()
+        //     .chain(self.threads[0..=self.current].iter());
+        // iter.position(|thread| thread.state == ThreadState::Ready)
+        //     .map(|idx| (idx + self.current + 1) % self.threads.len())
+        //
+        // solution 2
+        (self.current + 1..self.threads.len())
+            .chain(0..=self.current)
+            .inspect(|&i| println!("{i} is {:?}", self.threads[i].state))
+            .find(|&idx| self.threads[idx].state == ThreadState::Ready)
     }
 
     /// Find the next ready thread (starting from `current + 1` round-robin), mark current as `Ready` (if not `Finished`), mark next as `Running`, set `CURRENT_THREAD_ENTRY` if the next thread has an entry, then switch to it.
     fn schedule_next(&mut self) {
         // todo!("round-robin find next Ready, set current Ready (if not Finished), next Running, CURRENT_THREAD_ENTRY, then switch_context")
-        let n = self.threads.len();
-        let cur = &mut self.threads[self.current];
-        if cur.state != ThreadState::Finished {
-            cur.state = ThreadState::Ready;
-        }
-        let mut cur_ctx = cur.ctx.clone();
-        let mut next_idx = (self.current + 1) % n;
-        while next_idx != self.current {
-            let next = &mut self.threads[next_idx];
-            if next.state == ThreadState::Ready {
-                next.state = ThreadState::Running;
-                if let Some(entry) = next.entry {
-                    unsafe { CURRENT_THREAD_ENTRY = Some(entry) };
-                }
-                self.current = next_idx;
-                unsafe { switch_context(&mut cur_ctx, &next.ctx) };
-                break;
+        {
+            let state = &mut self.threads[self.current].state;
+            if *state != ThreadState::Finished {
+                *state = ThreadState::Ready;
             }
-            next_idx = (next_idx + 1) % n;
         }
-        // ?
-        let next = &mut self.threads[0];
-        unsafe { switch_context(&mut cur_ctx, &next.ctx) };
+        let cur_idx = self.current;
+        let next_idx = self.round_robin().unwrap_or(0); // thread[0] is always Ready.
+
+        println!("{} to {}", cur_idx, next_idx);
+        let (cur, next) = if cur_idx <= next_idx {
+            let (l, r) = self.threads.split_at_mut(next_idx);
+            (&mut l[cur_idx], &mut r[0])
+        } else {
+            let (l, r) = self.threads.split_at_mut(cur_idx);
+            (&mut r[0], &mut l[next_idx])
+        };
+        next.state = ThreadState::Running;
+        self.current = next_idx;
+        if let Some(entry) = next.entry {
+            unsafe {
+                CURRENT_THREAD_ENTRY = Some(entry);
+            };
+        }
+        // println!("swtich from {} to {}", cur_idx, next_idx);
+        unsafe { switch_context(&mut cur.ctx, &next.ctx) }
+        // println!("switch back to {} from {}", next_idx, cur_idx);
     }
 }
 
@@ -230,6 +257,7 @@ fn thread_finished() {
         if !SCHEDULER.is_null() {
             let sched = &mut *SCHEDULER;
             sched.threads[sched.current].state = ThreadState::Finished;
+            // println!("finish {}", sched.current);
             sched.schedule_next();
         }
     }
@@ -260,29 +288,29 @@ mod tests {
         EXEC_ORDER.fetch_add(10, Ordering::SeqCst);
     }
 
-    // #[test]
-    // fn test_scheduler_runs_all() {
-    //     let _guard = TEST_LOCK.lock().unwrap();
-    //     EXEC_ORDER.store(0, Ordering::SeqCst);
+    #[test]
+    fn test_scheduler_runs_all() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        EXEC_ORDER.store(0, Ordering::SeqCst);
 
-    //     let mut sched = Scheduler::new();
-    //     sched.spawn(task_a);
-    //     sched.spawn(task_b);
-    //     sched.run();
+        let mut sched = Scheduler::new();
+        sched.spawn(task_a);
+        sched.spawn(task_b);
+        sched.run();
 
-    //     let got = EXEC_ORDER.load(Ordering::SeqCst);
-    //     if got != 122 {
-    //         panic!(
-    //             "EXEC_ORDER: expected 122, got {} (run with --nocapture to see stderr)",
-    //             got
-    //         );
-    //     }
-    // }
+        let got = EXEC_ORDER.load(Ordering::SeqCst);
+        if got != 122 {
+            panic!(
+                "EXEC_ORDER: expected 122, got {} (run with --nocapture to see stderr)",
+                got
+            );
+        }
+    }
 
     static SIMPLE_FLAG: AtomicU32 = AtomicU32::new(0);
 
     extern "C" fn simple_task() {
-        println!("wtf2");
+        // println!("wtf2");
         SIMPLE_FLAG.store(42, Ordering::SeqCst);
     }
 
@@ -294,7 +322,7 @@ mod tests {
         let mut sched = Scheduler::new();
         sched.spawn(simple_task);
         sched.run();
-        println!("wtf1");
+        // println!("wtf1");
 
         assert_eq!(SIMPLE_FLAG.load(Ordering::SeqCst), 42);
     }
