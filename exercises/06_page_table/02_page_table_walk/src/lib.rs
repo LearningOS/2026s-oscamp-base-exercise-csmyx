@@ -23,6 +23,7 @@
 pub const PAGE_SIZE: usize = 4096;
 /// 页内偏移位数
 pub const PAGE_OFFSET_BITS: u32 = 12;
+pub const PAGE_OFFSET_MASK: u32 = (1 << PAGE_OFFSET_BITS) - 1;
 
 /// 页表项标志
 pub const PTE_VALID: u8 = 1 << 0;
@@ -65,19 +66,22 @@ impl SingleLevelPageTable {
     /// 提示：在 `entries[vpn]` 处存放一个 `PageTableEntry`。
     pub fn map(&mut self, vpn: usize, ppn: u32, flags: u8) {
         // TODO: 在页表中建立 vpn -> ppn 的映射
-        todo!()
+        let entry = PageTableEntry { ppn, flags };
+        assert!(vpn < self.entries.len());
+        self.entries[vpn] = Some(entry);
     }
 
     /// 取消虚拟页号 `vpn` 的映射。
     pub fn unmap(&mut self, vpn: usize) {
         // TODO: 将 entries[vpn] 设为 None
-        todo!()
+        assert!(vpn < self.entries.len());
+        self.entries[vpn] = None;
     }
 
     /// 查询虚拟页号 `vpn` 对应的页表项。
     pub fn lookup(&self, vpn: usize) -> Option<&PageTableEntry> {
         // TODO: 返回 entries[vpn] 的引用（如果存在）
-        todo!()
+        self.entries[vpn].as_ref()
     }
 
     /// 将虚拟地址翻译为物理地址。
@@ -93,7 +97,21 @@ impl SingleLevelPageTable {
         // 提示：
         //   let vpn = (va >> PAGE_OFFSET_BITS) as usize;
         //   let offset = va & ((1 << PAGE_OFFSET_BITS) - 1);
-        todo!()
+
+        let vpn = va_to_vpn(va);
+        let offset = va_to_offset(va);
+        if let Some(PageTableEntry { ppn, flags }) = self.lookup(vpn) {
+            if (flags & PTE_VALID) == 0 {
+                TranslateResult::PageFault
+            } else if is_write && ((flags & PTE_WRITE) == 0) {
+                TranslateResult::PermissionDenied
+            } else {
+                let pa = (ppn << PAGE_OFFSET_BITS) + offset;
+                TranslateResult::Ok(pa)
+            }
+        } else {
+            TranslateResult::PageFault
+        }
     }
 }
 
@@ -102,7 +120,7 @@ impl SingleLevelPageTable {
 /// 提示：右移 PAGE_OFFSET_BITS 位。
 pub fn va_to_vpn(va: u32) -> usize {
     // TODO
-    todo!()
+    (va >> PAGE_OFFSET_BITS) as usize
 }
 
 /// 从虚拟地址中提取页内偏移。
@@ -110,13 +128,13 @@ pub fn va_to_vpn(va: u32) -> usize {
 /// 提示：用掩码提取低 PAGE_OFFSET_BITS 位。
 pub fn va_to_offset(va: u32) -> u32 {
     // TODO
-    todo!()
+    va & PAGE_OFFSET_MASK
 }
 
 /// 由物理页号和偏移量拼出物理地址。
 pub fn make_pa(ppn: u32, offset: u32) -> u32 {
     // TODO
-    todo!()
+    (ppn << PAGE_OFFSET_BITS) | offset
 }
 
 #[cfg(test)]

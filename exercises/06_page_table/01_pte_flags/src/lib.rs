@@ -30,8 +30,12 @@
 //!
 //! - RSW (Reserved for Supervisor Software): Two bits reserved for operating system software use.
 //!
-//! - PPN (Physical Page Number): Physical page number occupying 44 bits (bits [53:10]), specifying the base address of the physical page frame.
-//! - PPN[2:0] (Physical Page Number): In the RISC-V SV39 paging mechanism, the Physical Page Number (PPN) is divided into three parts, which are referred to as PPN[2], PPN[1], and PPN[0]. This division is designed to support the indexing of multi-level page tables.
+//! - PPN (Physical Page Number): Physical page number occupying 44 bits (bits [53:10]),
+//!  specifying the base address of the physical page frame.
+//! - PPN[2:0] (Physical Page Number): In the RISC-V SV39 paging mechanism,
+//!  the Physical Page Number (PPN) is divided into three parts,
+//! which are referred to as PPN[2], PPN[1], and PPN[0].
+//! This division is designed to support the indexing of multi-level page tables.
 //! - Rsvd (Reserved): Reserved bits, typically set to 0.
 
 /// PTE flag constants
@@ -47,6 +51,7 @@ pub const PTE_D: u64 = 1 << 7; // Dirty
 /// PPN field offset and mask in PTE
 const PPN_SHIFT: u32 = 10;
 const PPN_MASK: u64 = (1u64 << 44) - 1; // 44-bit PPN
+const FLAG_MASK: u64 = (1u64 << 8) - 1; // lower 8-bit flags
 
 /// Construct a page table entry from physical page number (PPN) and flags.
 ///
@@ -58,7 +63,11 @@ const PPN_MASK: u64 = (1u64 << 44) - 1; // 44-bit PPN
 /// Hint: Shift PPN left by PPN_SHIFT bits, then OR with flags.
 pub fn make_pte(ppn: u64, flags: u64) -> u64 {
     // TODO: Construct page table entry using ppn and flags
-    todo!()
+    let mut pte = 0u64;
+    let ppn = ppn << PPN_SHIFT;
+    pte |= ppn;
+    pte |= flags;
+    pte
 }
 
 /// Extract physical page number (PPN) from page table entry.
@@ -66,19 +75,19 @@ pub fn make_pte(ppn: u64, flags: u64) -> u64 {
 /// Hint: Right shift by PPN_SHIFT bits, then AND with PPN_MASK.
 pub fn extract_ppn(pte: u64) -> u64 {
     // TODO: Extract PPN from pte
-    todo!()
+    pte >> PPN_SHIFT
 }
 
 /// Extract flags (lower 8 bits) from page table entry.
 pub fn extract_flags(pte: u64) -> u64 {
     // TODO: Extract lower 8-bit flags
-    todo!()
+    pte & FLAG_MASK
 }
 
 /// Check whether page table entry is valid (V bit set).
 pub fn is_valid(pte: u64) -> bool {
     // TODO: Check PTE_V
-    todo!()
+    (pte & PTE_V) != 0u64
 }
 
 /// Determine whether page table entry is a leaf PTE.
@@ -87,7 +96,17 @@ pub fn is_valid(pte: u64) -> bool {
 /// pointing to the final physical page. Otherwise it points to next-level page table.
 pub fn is_leaf(pte: u64) -> bool {
     // TODO: Check if any of R/W/X bits is set
-    todo!()
+    (pte & (PTE_R | PTE_W | PTE_X)) != 0u64
+}
+
+pub fn is_readable(pte: u64) -> bool {
+    (pte & PTE_R) != 0u64
+}
+pub fn is_writable(pte: u64) -> bool {
+    (pte & PTE_W) != 0u64
+}
+pub fn is_executable(pte: u64) -> bool {
+    (pte & PTE_X) != 0u64
 }
 
 /// Check whether page table entry permits the requested access based on given permissions.
@@ -99,7 +118,10 @@ pub fn is_leaf(pte: u64) -> bool {
 /// Returns true iff: PTE is valid, and each requested permission is satisfied.
 pub fn check_permission(pte: u64, read: bool, write: bool, execute: bool) -> bool {
     // TODO: First check if valid, then check each requested permission
-    todo!()
+    is_valid(pte)
+        && (!read || is_readable(pte))
+        && (!write || is_writable(pte))
+        && (!execute || is_executable(pte))
 }
 
 #[cfg(test)]
