@@ -228,13 +228,13 @@ impl Mmu {
         if let Some(ppn) = self.tlb.lookup(vpn, self.current_asid) {
             Some(ppn)
         } else {
-            if let Some((_, PageMapping { vpn, ppn, flags })) = self
+            if let Some(&(_, PageMapping { vpn, ppn, flags })) = self
                 .page_table
                 .iter()
                 .find(|(asid, page_mapping)| *asid == self.current_asid && page_mapping.vpn == vpn)
             {
-                self.tlb.insert(*vpn, *ppn, self.current_asid, *flags);
-                Some(*ppn)
+                self.tlb.insert(vpn, ppn, self.current_asid, flags);
+                Some(ppn)
             } else {
                 None
             }
