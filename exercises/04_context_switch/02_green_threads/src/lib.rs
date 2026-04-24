@@ -194,7 +194,7 @@ impl Scheduler {
         // solution 2
         (self.current + 1..self.threads.len())
             .chain(0..=self.current)
-            .inspect(|&i| println!("{i} is {:?}", self.threads[i].state))
+            // .inspect(|&i| println!("{i} is {:?}", self.threads[i].state))
             .find(|&idx| self.threads[idx].state == ThreadState::Ready)
     }
 
@@ -210,7 +210,7 @@ impl Scheduler {
         let cur_idx = self.current;
         let next_idx = self.round_robin().unwrap_or(0); // thread[0] is always Ready.
 
-        println!("{} to {}", cur_idx, next_idx);
+        // println!("{} to {}", cur_idx, next_idx);
         let (cur, next) = if cur_idx <= next_idx {
             let (l, r) = self.threads.split_at_mut(next_idx);
             (&mut l[cur_idx], &mut r[0])
