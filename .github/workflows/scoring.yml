@@ -37,7 +37,7 @@ jobs:
         run: |
           RISCV64_TARGET="riscv64gc-unknown-linux-gnu"
           RISCV64_SYSROOT="${RISCV64_SYSROOT:-/usr/riscv64-linux-gnu}"
-          export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER="qemu-riscv64 -L $RISCV64_SYSROOT"
+          export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER="qemu-riscv64-static -L $RISCV64_SYSROOT"
 
           TOTAL_SCORE=0
           PASS=0
