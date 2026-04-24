@@ -2,6 +2,7 @@
 # OSCamp Exercise Checker
 # Checks each exercise's test status locally (no scoring — scoring runs in CI).
 
+set -e
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -131,6 +132,7 @@ for entry in "${exercises[@]}"; do
             echo -e "${RED}FAIL${NC}"
             ((FAIL++))
         fi
+        echo "fuck1"
     fi
 done
 
