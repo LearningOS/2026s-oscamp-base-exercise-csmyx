@@ -13,7 +13,7 @@
 //! - Callee-saved: `sp`, `ra`, `s0`–`s11`. The `ret` instruction is `jalr zero, 0(ra)`.
 //! - First and second arguments: `a0` (old context), `a1` (new context).
 
-#![cfg(target_arch = "riscv64")]
+// #![cfg(target_arch = "riscv64")]
 #![feature(naked_functions_rustic_abi)]
 use std::arch::naked_asm;
 
@@ -124,16 +124,16 @@ const STACK_SIZE: usize = 1024 * 64;
 /// (stack grows down). The buffer must be kept alive for the lifetime of the context using this stack.
 pub fn alloc_stack() -> (Vec<u8>, usize) {
     // todo!("allocate stack buffer, return (buffer, stack_top) with stack_top 16-byte aligned")
-    use std::alloc::{alloc, Layout};
-    const ALIGN: usize = 16;
-    let layout = Layout::from_size_align(STACK_SIZE, ALIGN).unwrap();
-    let ptr = unsafe { alloc(layout) };
-    let stk = unsafe { Vec::from_raw_parts(ptr, 0, STACK_SIZE) };
-    let top = ptr as usize + STACK_SIZE;
-    (stk, top)
-    // let stk = vec![0u8; STACK_SIZE];
-    // let ptr = stk.as_ptr();
-    // (stk, ptr as usize + STACK_SIZE)
+    // use std::alloc::{alloc, Layout};
+    // const ALIGN: usize = 16;
+    // let layout = Layout::from_size_align(STACK_SIZE, ALIGN).unwrap();
+    // let ptr = unsafe { alloc(layout) };
+    // let stk = unsafe { Vec::from_raw_parts(ptr, 0, STACK_SIZE) };
+    // let top = ptr as usize + STACK_SIZE;
+    // (stk, top)
+    let stk = vec![0u8; STACK_SIZE];
+    let ptr = stk.as_ptr();
+    (stk, ptr as usize + STACK_SIZE)
 }
 
 #[cfg(test)]
