@@ -132,7 +132,6 @@ for entry in "${exercises[@]}"; do
             echo -e "${RED}FAIL${NC}"
             ((FAIL++))
         fi
-        echo "fuck1"
     fi
 done
 
