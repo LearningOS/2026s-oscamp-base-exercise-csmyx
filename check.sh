@@ -37,6 +37,8 @@ ensure_riscv64_ready() {
         echo -e "  ${YELLOW}[Module 4] Preparing riscv64 environment (target / QEMU / sysroot)...${NC}"
         (cd "$REPO_ROOT" && bash scripts/setup_riscv64.sh) || exit 1
     fi
+    export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER="bash ${REPO_ROOT}/.cargo/run_riscv64.sh"
+
     if ! command -v qemu-riscv64 >/dev/null 2>&1; then
         echo -e "${RED}Error: qemu-riscv64 not found. Cannot run Module 4 tests on non-riscv64 host.${NC}" >&2
         echo "Install QEMU user-mode, e.g.:" >&2
@@ -114,21 +116,21 @@ for entry in "${exercises[@]}"; do
     if [ "$module" = "04_context_switch" ]; then
         if [ "$(uname -s)" = "Darwin" ]; then
             echo -e "${YELLOW}SKIP (macOS)${NC}"
-            ((++SKIP))
+            ((SKIP++))
         elif cargo test -p "$package" --target "$RISCV64_TARGET" --quiet -- --nocapture 2>/dev/null; then
             echo -e "${GREEN}PASS${NC}"
-            ((++PASS))
+            ((PASS++))
         else
             echo -e "${RED}FAIL${NC}"
-            ((++FAIL))
+            ((FAIL++))
         fi
     else
         if cargo test -p "$package" --quiet 2>/dev/null; then
             echo -e "${GREEN}PASS${NC}"
-            ((++PASS))
+            ((PASS++))
         else
             echo -e "${RED}FAIL${NC}"
-            ((++FAIL))
+            ((FAIL++))
         fi
     fi
 done
