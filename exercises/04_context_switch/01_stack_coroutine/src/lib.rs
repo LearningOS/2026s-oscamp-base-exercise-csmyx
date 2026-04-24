@@ -87,32 +87,34 @@ pub unsafe fn switch_context(old: &mut TaskContext, new: &TaskContext) {
         // store context to old
         "sd  sp,  0*8(a0)", //sp
         "sd  ra,  1*8(a0)", //ra
-        "sd  s1,  2*8(a0)", //s1
-        "sd  s2,  3*8(a0)", //s2
-        "sd  s3,  4*8(a0)", //s3
-        "sd  s4,  5*8(a0)", //s4
-        "sd  s5,  6*8(a0)", //s5
-        "sd  s6,  7*8(a0)", //s6
-        "sd  s7,  8*8(a0)", //s7
-        "sd  s8,  9*8(a0)", //s8
-        "sd  s9, 10*8(a0)", //s9
-        "sd s10, 11*8(a0)", //s10
-        "sd s11, 12*8(a0)", //s11
+        "sd  s0,  2*8(a0)", //s1
+        "sd  s1,  3*8(a0)", //s1
+        "sd  s2,  4*8(a0)", //s2
+        "sd  s3,  5*8(a0)", //s3
+        "sd  s4,  6*8(a0)", //s4
+        "sd  s5,  7*8(a0)", //s5
+        "sd  s6,  8*8(a0)", //s6
+        "sd  s7,  9*8(a0)", //s7
+        "sd  s8, 10*8(a0)", //s8
+        "sd  s9, 11*8(a0)", //s9
+        "sd s10, 12*8(a0)", //s10
+        "sd s11, 13*8(a0)", //s11
         //
         // load context from new
         "ld  sp,  0*8(a1)", //sp
         "ld  ra,  1*8(a1)", //ra
-        "ld  s1,  2*8(a1)", //s1
-        "ld  s2,  3*8(a1)", //s2
-        "ld  s3,  4*8(a1)", //s3
-        "ld  s4,  5*8(a1)", //s4
-        "ld  s5,  6*8(a1)", //s5
-        "ld  s6,  7*8(a1)", //s6
-        "ld  s7,  8*8(a1)", //s7
-        "ld  s8,  9*8(a1)", //s8
-        "ld  s9, 10*8(a1)", //s9
-        "ld s10, 11*8(a1)", //s10
-        "ld s11, 12*8(a1)", //s11
+        "ld  s0,  2*8(a1)", //s1
+        "ld  s1,  3*8(a1)", //s1
+        "ld  s2,  4*8(a1)", //s2
+        "ld  s3,  5*8(a1)", //s3
+        "ld  s4,  6*8(a1)", //s4
+        "ld  s5,  7*8(a1)", //s5
+        "ld  s6,  8*8(a1)", //s6
+        "ld  s7,  9*8(a1)", //s7
+        "ld  s8, 10*8(a1)", //s8
+        "ld  s9, 11*8(a1)", //s9
+        "ld s10, 12*8(a1)", //s10
+        "ld s11, 13*8(a1)", //s11
         //
         // zero a0, a1
         "li a0, 0",
